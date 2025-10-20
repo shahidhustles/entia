@@ -1,21 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { Send } from "lucide-react";
 import Prism from "@/components/Prism";
+import { ChatInputLanding } from "@/components/chat-input-landing";
+import { v4 as uuidv4 } from "uuid";
 
 export default function ChatPage() {
-  const [input, setInput] = useState("");
+  const router = useRouter();
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim()) return;
-
-    // For now, just clear the input (functionality will be added later)
-    console.log("User query:", input);
-    setInput("");
+  const handleSubmit = (message: string) => {
+    // Generate UUID for chat ID and redirect to chat page with query in search params
+    const chatId = uuidv4();
+    const searchParams = new URLSearchParams();
+    searchParams.set("q", message);
+    router.push(`/chat/${chatId}?${searchParams.toString()}`);
   };
 
   return (
@@ -25,7 +25,7 @@ export default function ChatPage() {
         <div className="flex items-center">
           <SidebarTrigger />
         </div>
-      </div>{" "}
+      </div>
       {/* Main Content Area */}
       <div className="flex-1 relative overflow-hidden">
         {/* Prism Background */}
@@ -57,33 +57,8 @@ export default function ChatPage() {
               </p>
             </div>
 
-            {/* Chat Input */}
-            <form onSubmit={handleSubmit} className="relative">
-              <div className="relative flex items-start">
-                <textarea
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  placeholder="Describe your database schema, ask for SQL queries, or request ER diagrams..."
-                  className="w-full pr-12 pl-3 py-4 text-base bg-background/95 backdrop-blur-sm border border-border rounded-xl shadow-lg focus:shadow-xl transition-shadow resize-none min-h-[120px] max-h-[300px] overflow-hidden scrollbar-hide"
-                  rows={4}
-                  onInput={(e) => {
-                    const target = e.target as HTMLTextAreaElement;
-                    target.style.height = "auto";
-                    target.style.height =
-                      Math.min(target.scrollHeight, 300) + "px";
-                  }}
-                />
-                <Button
-                  type="submit"
-                  size="sm"
-                  className="absolute right-2 top-2 h-8 w-8 p-0 rounded-lg"
-                  disabled={!input.trim()}
-                >
-                  <Send className="h-4 w-4" />
-                  <span className="sr-only">Send message</span>
-                </Button>
-              </div>
-            </form>
+            {/* Chat Input Component */}
+            <ChatInputLanding onSubmit={handleSubmit} />
 
             {/* Action Buttons */}
             <div className="mt-6 flex items-center justify-start">
