@@ -2,12 +2,21 @@ import { streamText, convertToModelMessages } from "ai";
 import { google } from "@ai-sdk/google";
 import type { GoogleGenerativeAIProviderOptions } from "@ai-sdk/google";
 import { z } from "zod";
+import { auth } from "@clerk/nextjs/server";
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 30;
 
 export async function POST(req: Request) {
   const { messages } = await req.json();
+  const { userId } = await auth();
+
+  console.log("[CHAT API] Messages array:", JSON.stringify(messages, null, 2));
+  console.log("[CHAT API] Messages length:", messages.length);
+
+  if (!userId) {
+    return new Response("Unauthorized", { status: 401 });
+  }
 
   const result = streamText({
     model: google("gemini-2.5-pro"),

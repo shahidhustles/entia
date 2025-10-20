@@ -1,8 +1,5 @@
 import { useChat as useBaseChat } from "@ai-sdk/react";
-import {
-  DefaultChatTransport,
-  lastAssistantMessageIsCompleteWithToolCalls,
-} from "ai";
+import { lastAssistantMessageIsCompleteWithToolCalls } from "ai";
 import { useCallback } from "react";
 
 /**
@@ -11,9 +8,17 @@ import { useCallback } from "react";
  */
 export function useChat() {
   const { messages, sendMessage, addToolResult, status, stop } = useBaseChat({
-    transport: new DefaultChatTransport({
-      api: "/api/chat",
-    }),
+    onFinish: () => {
+      // Remove query parameter from URL when chat completes (without reload)
+      if (typeof window !== "undefined") {
+        const url = new URL(window.location.href);
+        if (url.searchParams.has("q")) {
+          url.searchParams.delete("q");
+          // Use window.history.replaceState to update URL without reload
+          window.history.replaceState(null, "", url.pathname);
+        }
+      }
+    },
     // Automatically submit when all tool results are available
     sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
     // Handle client-side tools and automatically executed tools

@@ -5,14 +5,14 @@ import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import Prism from "@/components/Prism";
 import { ChatInputLanding } from "@/components/chat-input-landing";
-import { v4 as uuidv4 } from "uuid";
+import { nanoid } from "nanoid";
 
 export default function ChatPage() {
   const router = useRouter();
 
   const handleSubmit = (message: string) => {
-    // Generate UUID for chat ID and redirect to chat page with query in search params
-    const chatId = uuidv4();
+    // Generate a short unique ID for the chat and redirect with query params
+    const chatId = nanoid();
     const searchParams = new URLSearchParams();
     searchParams.set("q", message);
     router.push(`/chat/${chatId}?${searchParams.toString()}`);

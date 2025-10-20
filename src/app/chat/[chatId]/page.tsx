@@ -7,44 +7,54 @@ import {
   Conversation,
   ConversationContent,
   ConversationScrollButton,
-} from "@/components/ui/shadcn-io/ai/conversation";
+} from "@/components/ui/ai/conversation";
 import {
   Message,
   MessageContent,
   MessageAvatar,
-} from "@/components/ui/shadcn-io/ai/message";
+} from "@/components/ui/ai/message";
 import {
   Tool,
   ToolContent,
   ToolHeader,
   ToolInput,
   ToolOutput,
-} from "@/components/ui/shadcn-io/ai/tool";
+} from "@/components/ui/ai/tool";
 import {
   Reasoning,
   ReasoningContent,
   ReasoningTrigger,
-} from "@/components/ui/shadcn-io/ai/reasoning";
-import { Response } from "@/components/ui/shadcn-io/ai/response";
+} from "@/components/ui/ai/reasoning";
+import { Response } from "@/components/ui/ai/response";
 import { useChat } from "@/hooks/use-chat";
 import { ChatInput } from "@/components/chat-input";
 
 export default function ChatIdPage() {
   const searchParams = useSearchParams();
-  const { messages, sendMessage, status } = useChat();
   const hasInitialized = useRef(false);
+  const hasSentInitialMessage = useRef(false);
 
-  // Extract query from search params and send initial message
+  const initialQuery = searchParams.get("q");
+  const hasQueryParam = !!initialQuery;
+
+  const { messages, sendMessage, status } = useChat();
+
+  // Extract query from search params and send initial message (for new chats)
+  // Only run ONCE when component mounts with query param
   useEffect(() => {
-    if (!hasInitialized.current) {
-      const query = searchParams.get("q");
-      if (query) {
-        console.log("[CHAT_PAGE] Initial query from search params:", query);
-        sendMessage(query);
-        hasInitialized.current = true;
-      }
+    if (
+      !hasInitialized.current &&
+      !hasSentInitialMessage.current &&
+      hasQueryParam &&
+      initialQuery
+    ) {
+      console.log("[CHAT_PAGE] Sending initial query:", initialQuery);
+      sendMessage(initialQuery);
+      hasInitialized.current = true;
+      hasSentInitialMessage.current = true;
     }
-  }, [searchParams, sendMessage]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty deps - only run once on mount to prevent duplicate messages
 
   // Helper function to render message parts
   const renderMessageParts = (parts: Record<string, unknown>[]) => {
@@ -119,37 +129,35 @@ export default function ChatIdPage() {
       {/* Messages Area - Scrollable using Conversation Component */}
       <Conversation className="flex-1">
         <ConversationContent className="px-4 sm:px-6 md:px-8 py-8">
-          {messages.length === 0 ? (
-            <div className="flex items-center justify-center h-full text-center">
-              <div>
-                <h2 className="text-2xl font-bold text-white mb-2">
-                  Starting a new conversation
-                </h2>
-                <p className="text-white/60">Your messages will appear here</p>
+          <div className="max-w-4xl mx-auto w-full">
+            {messages.length === 0 ? (
+              <div className="text-center text-muted-foreground py-8">
+                Starting a new conversation...
               </div>
-            </div>
-          ) : (
-            <div className="max-w-4xl mx-auto w-full">
-              {messages.map((message) => (
-                <Message
-                  key={message.id}
-                  from={message.role as "user" | "assistant"}
-                >
-                  <MessageContent>
-                    {renderMessageParts(message.parts)}
-                  </MessageContent>
-                  <MessageAvatar
-                    name={message.role === "user" ? "You" : "Assistant"}
-                    src={
-                      message.role === "user"
-                        ? "https://github.com/user.png"
-                        : "https://github.com/openai.png"
-                    }
-                  />
-                </Message>
-              ))}
-            </div>
-          )}
+            ) : (
+              <>
+                {/* Show messages from current session */}
+                {messages.map((message) => (
+                  <Message
+                    key={message.id}
+                    from={message.role as "user" | "assistant"}
+                  >
+                    <MessageContent>
+                      {renderMessageParts(message.parts)}
+                    </MessageContent>
+                    <MessageAvatar
+                      name={message.role === "user" ? "You" : "Assistant"}
+                      src={
+                        message.role === "user"
+                          ? "https://github.com/user.png"
+                          : "https://github.com/openai.png"
+                      }
+                    />
+                  </Message>
+                ))}
+              </>
+            )}
+          </div>
         </ConversationContent>
         <ConversationScrollButton />
       </Conversation>

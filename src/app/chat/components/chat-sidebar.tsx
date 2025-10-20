@@ -11,7 +11,7 @@ import {
   SidebarMenuItem,
   SidebarSeparator,
 } from "@/components/ui/sidebar";
-import { User, Plus } from "lucide-react";
+import { Plus, User } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 
@@ -66,38 +66,11 @@ export function ChatSidebar() {
             Previous Conversations
           </div>
 
-          {/* Placeholder for chat history */}
+          {/* Chat History - Disabled for now */}
           <div className="space-y-2">
-            <SidebarMenuButton asChild className="w-full justify-start">
-              <Link
-                href="/chat/example-1"
-                className="flex items-center text-sm p-3 rounded-lg hover:bg-accent/50 transition-colors"
-              >
-                <span className="truncate">
-                  Database Schema Design Discussion
-                </span>
-              </Link>
-            </SidebarMenuButton>
-            <SidebarMenuButton asChild className="w-full justify-start">
-              <Link
-                href="/chat/example-2"
-                className="flex items-center text-sm p-3 rounded-lg hover:bg-accent/50 transition-colors"
-              >
-                <span className="truncate">
-                  ER Diagram Generation for E-commerce
-                </span>
-              </Link>
-            </SidebarMenuButton>
-            <SidebarMenuButton asChild className="w-full justify-start">
-              <Link
-                href="/chat/example-3"
-                className="flex items-center text-sm p-3 rounded-lg hover:bg-accent/50 transition-colors"
-              >
-                <span className="truncate">
-                  SQL Optimization and Query Planning
-                </span>
-              </Link>
-            </SidebarMenuButton>
+            <p className="text-xs text-muted-foreground text-center py-4">
+              Chat history coming soon
+            </p>
           </div>
         </div>
       </SidebarContent>
