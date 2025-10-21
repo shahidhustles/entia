@@ -7,6 +7,7 @@ import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import { CodeBlock, CodeBlockCopyButton } from "./code-block";
+import { MermaidDiagram } from "../mermaid-diagram";
 import hardenReactMarkdown from "harden-react-markdown";
 import { cn } from "@/lib/utils";
 
@@ -311,8 +312,15 @@ const components: Options["components"] = {
   pre: ({ node, className, children }) => {
     let language = "javascript";
 
+    // Extract language from className (e.g., "language-mermaid")
     if (typeof node?.properties?.className === "string") {
-      language = node.properties.className.replace("language-", "");
+      language = node.properties.className
+        .replace("language-", "")
+        .trim()
+        .toLowerCase();
+    } else if (className) {
+      // Fallback to className prop
+      language = className.replace("language-", "").trim().toLowerCase();
     }
 
     // Extract code content from children safely
@@ -325,6 +333,27 @@ const components: Options["components"] = {
       code = (children.props as Record<string, unknown>).children as string;
     } else if (typeof children === "string") {
       code = children;
+    }
+
+    // Detect mermaid diagrams by content if language detection fails
+    const isMermaidByContent =
+      code.trim().startsWith("erDiagram") ||
+      code.trim().startsWith("graph") ||
+      code.trim().startsWith("flowchart") ||
+      code.trim().startsWith("sequenceDiagram");
+
+    console.log("[MARKDOWN] Code block detected:", {
+      language,
+      className,
+      nodeClassName: node?.properties?.className,
+      codePreview: code.substring(0, 50),
+      isMermaidByContent,
+    });
+
+    // Render mermaid diagrams instead of code blocks
+    if (language === "mermaid" || isMermaidByContent) {
+      console.log("[MARKDOWN] Rendering as mermaid diagram");
+      return <MermaidDiagram code={code} className={className} />;
     }
 
     return (
