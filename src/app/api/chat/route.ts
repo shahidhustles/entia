@@ -153,6 +153,32 @@ Guidelines:
 - Consider normalization when creating new tables
 - Show data types and constraints clearly in your responses
 
+IMPORTANT for Mermaid ER Diagrams:
+- Simplify data types: Remove size constraints (e.g., "varchar(255)" → "string", "decimal(10,2)" → "decimal")
+- Use Mermaid-safe types: int, string, text, decimal, boolean, timestamp, date, time
+- Use UPPERCASE for entity/table names: USERS, PRODUCTS, ORDERS (not users, products)
+- Use lowercase with underscores for field names: user_id, created_at
+- Each field on a separate line with format: TYPE fieldname KEYMARKER
+- Key markers: PK for primary key, FK for foreign key, UK for unique key
+- Show relationships: TABLE1 ||--o{ TABLE2 : "relationship"
+- CORRECT format: 
+  \`\`\`mermaid
+  erDiagram
+    USERS {
+      int id PK
+      string email
+      string name
+      timestamp created_at
+    }
+    PRODUCTS {
+      int id PK
+      string product_name
+      decimal price
+      int user_id FK
+    }
+    USERS ||--o{ PRODUCTS : ""
+  \`\`\`
+
 When the user asks to:
 - "Show my database" → Use get_database_schema and generate a Mermaid ER diagram in \`\`\`mermaid code fence
 - "Create a [Table] table with..." → Generate SQL in \`\`\`sql code fence and prepare for execute_sql

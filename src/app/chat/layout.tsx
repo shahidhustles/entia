@@ -13,7 +13,7 @@ export default function ChatLayout({
   return (
     <div className="min-h-screen bg-background">
       <SidebarProvider>
-        <Sidebar>
+        <Sidebar className="z-50">
           <SidebarContent>
             <ChatSidebar />
           </SidebarContent>

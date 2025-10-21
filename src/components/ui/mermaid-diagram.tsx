@@ -61,7 +61,18 @@ export function MermaidDiagram({ code, className }: MermaidDiagramProps) {
           setError(null);
           console.log("[MERMAID] Diagram rendered successfully");
         } catch (renderErr) {
-          throw renderErr;
+          // If rendering fails, show the raw code instead of throwing
+          const errorMessage =
+            renderErr instanceof Error
+              ? renderErr.message
+              : "Failed to render diagram";
+          console.warn(
+            "[MERMAID] Render failed, showing raw code:",
+            errorMessage
+          );
+          // Set a fallback - show raw code as plain text
+          setSvgHtml("");
+          setError(null); // Don't show error, just display raw code
         }
       } catch (err) {
         const errorMessage =
@@ -169,8 +180,23 @@ export function MermaidDiagram({ code, className }: MermaidDiagramProps) {
             </div>
           </div>
         ) : (
-          <div className="bg-black flex justify-center items-center min-h-[700px]">
-            <div className="text-gray-400 text-sm">Rendering diagram...</div>
+          <div className="bg-black p-8 min-h-[400px] overflow-auto">
+            <div className="bg-gray-900 rounded border border-gray-700 p-4">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs text-gray-400 font-mono">mermaid</span>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleCopyCode}
+                  className="h-7"
+                >
+                  <Copy className="w-3 h-3" />
+                </Button>
+              </div>
+              <pre className="text-white text-xs font-mono whitespace-pre-wrap break-words overflow-auto max-h-96">
+                <code>{code}</code>
+              </pre>
+            </div>
           </div>
         )}
 

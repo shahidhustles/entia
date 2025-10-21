@@ -38,7 +38,7 @@ export function ChatInput({
   };
 
   return (
-    <div className="flex-none p-4 sm:p-6 md:p-8 border-t border-border bg-background/50 backdrop-blur-sm">
+    <div className="w-full">
       <div className="max-w-4xl mx-auto w-full">
         <form onSubmit={handleSubmit} className="relative">
           <div className="relative flex items-end gap-3">

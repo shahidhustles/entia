@@ -3,11 +3,6 @@
 import { useEffect, useRef } from "react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import {
-  Conversation,
-  ConversationContent,
-  ConversationScrollButton,
-} from "@/components/ui/ai/conversation";
-import {
   Message,
   MessageContent,
   MessageAvatar,
@@ -130,15 +125,15 @@ export function ClientChatComponent({
   return (
     <div className="flex flex-col h-full w-full bg-background">
       {/* Header with Sidebar Trigger */}
-      <div className="flex-none p-4 border-b border-border bg-background/50 backdrop-blur-sm">
+      <div className="flex-none p-4 border-b border-border bg-background/50 backdrop-blur-sm z-10">
         <div className="flex items-center gap-2">
           <SidebarTrigger className="h-9 w-9" />
         </div>
       </div>
 
-      {/* Messages Area - Scrollable using Conversation Component */}
-      <Conversation className="flex-1">
-        <ConversationContent className="px-4 sm:px-6 md:px-8 py-8">
+      {/* Messages Area - Scrollable */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="px-4 sm:px-6 md:px-8 py-8 pb-32">
           <div className="max-w-4xl mx-auto w-full">
             {messages.length === 0 ? (
               <div className="text-center text-muted-foreground py-8">
@@ -170,17 +165,18 @@ export function ClientChatComponent({
               </>
             )}
           </div>
-        </ConversationContent>
-        <ConversationScrollButton />
-      </Conversation>
+        </div>
+      </div>
 
-      {/* Chat Input Component */}
-      <ChatInput
-        onSubmit={(message) => {
-          sendMessage(message);
-        }}
-        status={status}
-      />
+      {/* Chat Input Component - Fixed at bottom */}
+      <div className="fixed bottom-0 left-0 right-0 p-4 sm:p-6 md:p-8 border-t border-border bg-background/95 backdrop-blur-sm z-20 ml-0 lg:ml-64">
+        <ChatInput
+          onSubmit={(message) => {
+            sendMessage(message);
+          }}
+          status={status}
+        />
+      </div>
     </div>
   );
 }

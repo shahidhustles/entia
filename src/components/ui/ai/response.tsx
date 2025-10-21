@@ -336,11 +336,14 @@ const components: Options["components"] = {
     }
 
     // Detect mermaid diagrams by content if language detection fails
+    // Only detect if code contains newlines (multi-line) and actual diagram content
     const isMermaidByContent =
-      code.trim().startsWith("erDiagram") ||
-      code.trim().startsWith("graph") ||
-      code.trim().startsWith("flowchart") ||
-      code.trim().startsWith("sequenceDiagram");
+      code.includes("\n") &&
+      (code.trim().startsWith("erDiagram") ||
+        code.trim().startsWith("graph") ||
+        code.trim().startsWith("flowchart") ||
+        code.trim().startsWith("sequenceDiagram") ||
+        code.trim().startsWith("classDiagram"));
 
     console.log("[MARKDOWN] Code block detected:", {
       language,
