@@ -1,9 +1,9 @@
-import { pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
 // Users table - stores user info and Clerk integration
 export const users = pgTable("users", {
-  id: uuid("id").primaryKey().defaultRandom(),
+  id: text("id").primaryKey(), // Use Clerk ID as primary key
   clerkId: text("clerk_id").notNull().unique(),
   email: text("email").notNull().unique(),
   name: text("name"),
@@ -13,8 +13,8 @@ export const users = pgTable("users", {
 
 // Conversations table - chat sessions
 export const conversations = pgTable("conversations", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  userId: uuid("user_id")
+  id: text("id").primaryKey(), // Changed to text to accept nanoid from client
+  userId: text("user_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
   title: text("title").notNull().default("New Chat"),
@@ -24,8 +24,8 @@ export const conversations = pgTable("conversations", {
 
 // Messages table - individual chat messages
 export const messages = pgTable("messages", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  conversationId: uuid("conversation_id")
+  id: text("id").primaryKey(), // Changed to text to accept message IDs from SDK
+  conversationId: text("conversation_id")
     .notNull()
     .references(() => conversations.id, { onDelete: "cascade" }),
   role: text("role").notNull(), // 'user' | 'assistant'

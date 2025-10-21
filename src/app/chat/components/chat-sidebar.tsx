@@ -1,6 +1,8 @@
 "use client";
 
 import { useUser } from "@clerk/nextjs";
+import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import {
   Sidebar,
   SidebarContent,
@@ -14,9 +16,41 @@ import {
 import { Plus, User } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
+import { fetchUserConversations } from "@/app/actions/conversations";
+
+interface Conversation {
+  id: string;
+  title: string;
+  createdAt: Date | null;
+  updatedAt: Date | null;
+  userId: string;
+}
 
 export function ChatSidebar() {
   const { user } = useUser();
+  const pathname = usePathname();
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const loadConversations = async () => {
+      try {
+        setIsLoading(true);
+        const data = await fetchUserConversations();
+        setConversations(data);
+      } catch (error) {
+        console.error("Failed to load conversations:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadConversations();
+
+    // Refresh conversations periodically (every 30 seconds)
+    const interval = setInterval(loadConversations, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Get current time for greeting
   const getCurrentGreeting = () => {
@@ -66,11 +100,41 @@ export function ChatSidebar() {
             Previous Conversations
           </div>
 
-          {/* Chat History - Disabled for now */}
+          {/* Chat History */}
           <div className="space-y-2">
-            <p className="text-xs text-muted-foreground text-center py-4">
-              Chat history coming soon
-            </p>
+            {isLoading ? (
+              <div className="space-y-2">
+                {[...Array(3)].map((_, i) => (
+                  <div
+                    key={i}
+                    className="h-10 bg-muted rounded animate-pulse"
+                  />
+                ))}
+              </div>
+            ) : conversations.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-4">
+                No conversations yet
+              </p>
+            ) : (
+              conversations.map((conv) => (
+                <SidebarMenuButton
+                  key={conv.id}
+                  asChild
+                  className="w-full justify-start"
+                >
+                  <Link
+                    href={`/chat/${conv.id}`}
+                    className={`flex items-center text-sm p-3 rounded-lg transition-colors ${
+                      pathname === `/chat/${conv.id}`
+                        ? "bg-accent text-accent-foreground font-semibold"
+                        : "hover:bg-accent/50"
+                    }`}
+                  >
+                    <span className="truncate">{conv.title}</span>
+                  </Link>
+                </SidebarMenuButton>
+              ))
+            )}
           </div>
         </div>
       </SidebarContent>

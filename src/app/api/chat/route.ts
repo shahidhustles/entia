@@ -1,22 +1,60 @@
-import { streamText, convertToModelMessages } from "ai";
+import {
+  streamText,
+  convertToModelMessages,
+  type UIMessage,
+  generateId,
+} from "ai";
 import { google } from "@ai-sdk/google";
 import type { GoogleGenerativeAIProviderOptions } from "@ai-sdk/google";
 import { z } from "zod";
 import { auth } from "@clerk/nextjs/server";
+import {
+  saveConversation,
+  getOrCreateUser,
+  getConversation,
+  generateConversationTitle,
+} from "@/app/actions/conversations";
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 30;
 
+/**
+ * Helper: Extract text content from UIMessage parts
+ */
+function extractTextFromParts(parts: UIMessage["parts"]): string {
+  return parts
+    .filter((part) => part.type === "text")
+    .map((part) => (part as { type: "text"; text: string }).text)
+    .join(" ")
+    .trim();
+}
+
 export async function POST(req: Request) {
-  const { messages } = await req.json();
+  const { messages, id: conversationId } = await req.json();
   const { userId } = await auth();
 
-  console.log("[CHAT API] Messages array:", JSON.stringify(messages, null, 2));
+  console.log("[CHAT API] Received conversation ID:", conversationId);
   console.log("[CHAT API] Messages length:", messages.length);
 
   if (!userId) {
     return new Response("Unauthorized", { status: 401 });
   }
+
+  // Get or create user in database
+  let dbUser;
+  try {
+    dbUser = await getOrCreateUser(userId);
+  } catch (error) {
+    console.error("[CHAT API] Error getting/creating user:", error);
+    return new Response("Internal Server Error", { status: 500 });
+  }
+
+  // Check if conversation exists
+  const existingConversation = conversationId
+    ? await getConversation(conversationId)
+    : null;
+
+  const isFirstExchange = !existingConversation;
 
   const result = streamText({
     model: google("gemini-2.5-pro"),
@@ -171,5 +209,54 @@ When the user asks to:
 - "Save this diagram" → Use save_diagram tool`,
   });
 
-  return result.toUIMessageStreamResponse();
+  // Ensure stream runs to completion even if client disconnects
+  result.consumeStream();
+
+  return result.toUIMessageStreamResponse({
+    originalMessages: messages, // ✅ Prevents duplicate message IDs
+    generateMessageId: generateId, // ✅ Generate proper IDs for all messages
+    onFinish: async ({ messages: finalMessages }) => {
+      // Don't block streaming if save fails
+      try {
+        console.log("[CHAT SAVE] Starting save process");
+        console.log("[CHAT SAVE] Final messages count:", finalMessages.length);
+        console.log("[CHAT SAVE] Is first exchange:", isFirstExchange);
+
+        let title = existingConversation?.title || "New Chat";
+
+        // Generate title on first exchange
+        if (isFirstExchange && finalMessages.length >= 2) {
+          try {
+            const firstUserMsg = extractTextFromParts(finalMessages[0].parts);
+            const firstAiMsg = extractTextFromParts(finalMessages[1].parts);
+
+            console.log(
+              "[CHAT SAVE] Generating title from:",
+              firstUserMsg.substring(0, 50)
+            );
+
+            title = await generateConversationTitle(firstUserMsg, firstAiMsg);
+            console.log("[CHAT SAVE] Generated title:", title);
+          } catch (titleError) {
+            console.error("[CHAT SAVE] Title generation failed:", titleError);
+            // Use default title if generation fails
+            title = "New Chat";
+          }
+        }
+
+        // Save conversation and messages
+        await saveConversation({
+          conversationId: conversationId || "unknown",
+          userId: dbUser.id,
+          title,
+          messages: finalMessages,
+        });
+
+        console.log("[CHAT SAVE] Successfully saved conversation");
+      } catch (error) {
+        console.error("[CHAT SAVE] Error saving conversation:", error);
+        // Don't throw - we want streaming to complete even if DB save fails
+      }
+    },
+  });
 }

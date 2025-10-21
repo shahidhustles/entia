@@ -1,13 +1,20 @@
 import { useChat as useBaseChat } from "@ai-sdk/react";
-import { lastAssistantMessageIsCompleteWithToolCalls } from "ai";
+import { lastAssistantMessageIsCompleteWithToolCalls, UIMessage } from "ai";
 import { useCallback } from "react";
 
 /**
  * Custom useChat hook with Vercel AI SDK integration
  * Handles tool calls, streaming, and message management
+ * @param conversationId - Optional conversation ID for persistence
+ * @param initialMessages - Optional initial messages to load
  */
-export function useChat() {
+export function useChat(
+  conversationId?: string,
+  initialMessages?: UIMessage[]
+) {
   const { messages, sendMessage, addToolResult, status, stop } = useBaseChat({
+    id: conversationId, // ✅ Pass conversation ID to SDK - automatically included in requests
+    messages: initialMessages, // ✅ Load initial messages
     onFinish: () => {
       // Remove query parameter from URL when chat completes (without reload)
       if (typeof window !== "undefined") {
