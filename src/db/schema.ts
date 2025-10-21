@@ -7,6 +7,7 @@ export const users = pgTable("users", {
   clerkId: text("clerk_id").notNull().unique(),
   email: text("email").notNull().unique(),
   name: text("name"),
+  databaseConnectionUrl: text("database_connection_url"), // Encrypted MySQL connection string
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

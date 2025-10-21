@@ -14,6 +14,9 @@ import {
   getConversation,
   generateConversationTitle,
 } from "@/app/actions/conversations";
+import { getDatabaseSchema } from "@/app/actions/tools/get-database-schema";
+import { queryDatabase } from "@/app/actions/tools/query-database";
+import { executeSql } from "@/app/actions/tools/execute-sql";
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 30;
@@ -75,12 +78,7 @@ export async function POST(req: Request) {
         inputSchema: z.object({}),
         execute: async () => {
           console.log("[TOOL EXECUTION] get_database_schema called");
-          // Placeholder: Will be implemented to connect to user's MySQL database
-          return {
-            tables: [],
-            schema: {},
-            message: "Database schema retrieval - placeholder implementation",
-          };
+          return getDatabaseSchema();
         },
       },
 
@@ -96,12 +94,7 @@ export async function POST(req: Request) {
             "[TOOL EXECUTION] query_database called with query:",
             query
           );
-          // Placeholder: Will be implemented to execute SELECT queries via mysql2
-          return {
-            results: [],
-            rowCount: 0,
-            message: "Query execution - placeholder implementation",
-          };
+          return queryDatabase(query);
         },
       },
 
@@ -136,47 +129,7 @@ export async function POST(req: Request) {
             isDangerous,
             confirmationRequired,
           });
-          // Placeholder: Will be implemented to execute DDL/DML queries via mysql2
-          return {
-            success: true,
-            affectedRows: 0,
-            message: "SQL execution - placeholder implementation",
-          };
-        },
-      },
-
-      // Server-side tool: Save diagram
-      save_diagram: {
-        description:
-          "Save an ER diagram to the user's diagram history in the database",
-        inputSchema: z.object({
-          title: z.string().describe("Title of the diagram"),
-          mermaidCode: z.string().describe("Mermaid diagram code"),
-          description: z
-            .string()
-            .optional()
-            .describe("Optional description of the diagram"),
-        }),
-        execute: async ({
-          title,
-          mermaidCode,
-          description,
-        }: {
-          title: string;
-          mermaidCode: string;
-          description?: string;
-        }) => {
-          console.log("[TOOL EXECUTION] save_diagram called with:", {
-            title,
-            mermaidCodeLength: mermaidCode.length,
-            description,
-          });
-          // Placeholder: Will be implemented to save diagram to Supabase via Drizzle ORM
-          return {
-            diagramId: "diagram_placeholder_id",
-            saved: true,
-            message: "Diagram saved - placeholder implementation",
-          };
+          return executeSql(query);
         },
       },
     },
@@ -190,7 +143,6 @@ Your capabilities include:
 2. Analyzing existing database schemas and generating ER diagrams in Mermaid format
 3. Executing queries and database operations
 4. Providing normalization and design recommendations
-5. Saving ER diagrams for future reference
 
 Guidelines:
 - Always explain what you're doing before making tool calls
@@ -206,7 +158,7 @@ When the user asks to:
 - "Create a [Table] table with..." → Generate SQL in \`\`\`sql code fence and prepare for execute_sql
 - "What's in [Table]" → Use query_database
 - "Add a relationship" → Use execute_sql for ALTER TABLE
-- "Save this diagram" → Use save_diagram tool`,
+`,
   });
 
   // Ensure stream runs to completion even if client disconnects

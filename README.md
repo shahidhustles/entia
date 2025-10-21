@@ -56,14 +56,20 @@
 - **Client-side confirmation for dangerous operations** (DROP, DELETE)
 - Direct connection to MySQL/PostgreSQL databases
 
-### 6. **Conversation & History Management**
+### 6. **ER Diagram Export**
+
+- Export Mermaid diagrams as images (PNG/SVG)
+- Download diagrams for documentation
+- Copy diagram code to clipboard
+- Share diagram code with others
+
+### 7. **Conversation & History Management**
 
 - Persistent chat conversation history
 - Sidebar display of chat sessions
 - Full conversation context for multi-step operations
-- Save important ER diagrams with metadata
 
-### 7. **Database Connection Management**
+### 8. **Database Connection Management**
 
 - One database per user (single connection URL)
 - Secure encrypted storage of connection strings
@@ -195,10 +201,12 @@ Gemini has access to these tools for database operations:
 
 ### **4. `save_diagram`**
 
-- **Purpose**: Save ER diagram to user's diagram history
-- **Input**: Title, Mermaid code, description
-- **Output**: Diagram ID
-- **Use Case**: Store generated ER diagrams for future reference
+~~Purpose: Save ER diagram to user's diagram history~~
+~~Input: Title, Mermaid code, description~~
+~~Output: Diagram ID~~
+~~Use Case: Store generated ER diagrams for future reference~~
+
+**REMOVED**: Export button will be used instead for downloading/sharing diagrams directly.
 
 ---
 
@@ -241,44 +249,32 @@ export async function getDatabaseSchema(connection) {
 import { pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
 export const users = pgTable("users", {
-  id: uuid("id").primaryKey().defaultRandom(),
+  id: text("id").primaryKey(), // Clerk ID as primary key
   clerkId: text("clerk_id").notNull().unique(),
   email: text("email").notNull().unique(),
   name: text("name"),
-  mysqlConnectionString: text("mysql_connection_string"), // encrypted
+  mysqlConnectionString: text("mysql_connection_string"), // encrypted connection string
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const conversations = pgTable("conversations", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  userId: uuid("user_id")
+  id: text("id").primaryKey(),
+  userId: text("user_id")
     .notNull()
     .references(() => users.id),
   title: text("title"),
   createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const messages = pgTable("messages", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  conversationId: uuid("conversation_id")
+  id: text("id").primaryKey(),
+  conversationId: text("conversation_id")
     .notNull()
     .references(() => conversations.id),
   role: text("role").notNull(), // 'user' | 'assistant'
   content: text("content").notNull(),
-  mermaidCode: text("mermaid_code"),
-  sqlSnippets: text("sql_snippets"),
-  timestamp: timestamp("timestamp").defaultNow(),
-});
-
-export const savedDiagrams = pgTable("saved_diagrams", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  userId: uuid("user_id")
-    .notNull()
-    .references(() => users.id),
-  title: text("title").notNull(),
-  mermaidCode: text("mermaid_code").notNull(),
-  description: text("description"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 ```
@@ -292,11 +288,11 @@ export const savedDiagrams = pgTable("saved_diagrams", {
 #### **User**
 
 ```
-├── id (UUID primary key)
+├── id (Clerk ID as primary key)
 ├── clerkId (unique)
 ├── email (unique)
 ├── name
-├── mysqlConnectionString (encrypted - MySQL/PostgreSQL)
+├── mysqlConnectionString (encrypted - MySQL/PostgreSQL connection URL)
 ├── createdAt
 └── updatedAt
 ```
@@ -304,7 +300,7 @@ export const savedDiagrams = pgTable("saved_diagrams", {
 #### **Conversation** (Chat Sessions)
 
 ```
-├── id (UUID primary key)
+├── id (text primary key)
 ├── userId (foreign key → users)
 ├── title
 ├── createdAt
@@ -314,23 +310,10 @@ export const savedDiagrams = pgTable("saved_diagrams", {
 #### **Message**
 
 ```
-├── id (UUID primary key)
+├── id (text primary key)
 ├── conversationId (foreign key → conversations)
 ├── role (user / assistant)
 ├── content (text)
-├── mermaidCode (nullable - ER diagram)
-├── sqlSnippets (nullable - SQL code)
-└── timestamp
-```
-
-#### **SavedDiagram** (ER Diagram History)
-
-```
-├── id (UUID primary key)
-├── userId (foreign key → users)
-├── title
-├── mermaidCode
-├── description
 └── createdAt
 ```
 
@@ -416,24 +399,23 @@ User's Database:
 Available Tools:
 1. get_database_schema - Fetch full database structure
 2. query_database - Execute SELECT queries
-3. execute_sql - Execute CREATE/ALTER/INSERT/UPDATE queries
-4. save_diagram - Save ER diagrams
+3. execute_sql - Execute CREATE/ALTER/INSERT/UPDATE queries (requires client-side confirmation)
 
 Guidelines:
 - Always explain what you're doing before making tool calls
 - Generate Mermaid ER diagrams when analyzing or creating schemas
 - Provide SQL in markdown code blocks
-- For dangerous operations, always inform the user that confirmation is needed
+- For dangerous operations (DROP, DELETE, TRUNCATE, ALTER TABLE), inform user that confirmation is needed
 - Use proper SQL syntax and best practices
 - Consider normalization when creating new tables
 - Show data types and constraints clearly
 
 When user asks to:
-- "Show my database" → Use get_database_schema + generate Mermaid
+- "Show my database" → Use get_database_schema + generate Mermaid (with export button)
 - "Create a Users table with..." → Generate SQL + prepare for execute_sql
 - "What's in X table" → Use query_database
-- "Add a relationship" → Use execute_sql for ALTER TABLE
-- "Save this diagram" → Use save_diagram tool
+- "Add a relationship" → Use execute_sql for ALTER TABLE (with confirmation)
+- Export diagrams via button (PNG/SVG download or copy code)
 ```
 
 ---
@@ -538,25 +520,26 @@ Result: "✓ Deleted X records"
 
 - ✅ Clerk Authentication
 - ✅ Chat interface with Gemini
-- ✅ MySQL database connection
-- ✅ Basic CRUD operations
-- ✅ Mermaid ER diagram generation
+- 🔄 MySQL/PostgreSQL database connection (Profile page needed)
+- 🔄 Basic CRUD operations (Tools implementation needed)
+- 🔄 Mermaid ER diagram generation (Tools implementation needed)
+- ❌ Save diagrams (REMOVED - Export button instead)
 
-### **Phase 2: Enhancements**
+### **Phase 2: Core Functionality**
+
+- Client-side confirmation for dangerous SQL operations
+- Export Mermaid diagrams (PNG/SVG)
+- Copy diagram code to clipboard
+- Connection URL validation and encryption
+- Error handling and user feedback
+
+### **Phase 3: Enhancements**
 
 - PostgreSQL support
 - Advanced query optimization suggestions
-- Diagram export (PNG/SVG)
-- SQL query history and optimization tips
+- SQL query history
 - Batch operations
-
-### **Phase 3: Advanced Features**
-
-- Voice input (Web Speech API)
-- Collaborative database design
 - Performance analysis
-- Index recommendations
-- Database backup/restore suggestions
 
 ---
 

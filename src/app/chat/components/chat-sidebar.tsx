@@ -13,7 +13,7 @@ import {
   SidebarMenuItem,
   SidebarSeparator,
 } from "@/components/ui/sidebar";
-import { Plus, User } from "lucide-react";
+import { Plus, User, Settings } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { fetchUserConversations } from "@/app/actions/conversations";
@@ -77,9 +77,9 @@ export function ChatSidebar() {
 
       {/* Action Buttons Row */}
       <div className="p-4">
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col gap-3">
           {/* New Chat Button */}
-          <Link href="/chat" className="flex-1">
+          <Link href="/chat" className="w-full">
             <div className="group flex items-center gap-2 p-3 rounded-lg border border-border hover:bg-accent/50 transition-colors">
               <div className="relative">
                 <Plus className="h-4 w-4 transition-all duration-200 group-hover:bg-white group-hover:text-black group-hover:rounded-full group-hover:p-1 group-hover:h-6 group-hover:w-6" />
@@ -88,7 +88,13 @@ export function ChatSidebar() {
             </div>
           </Link>
 
-          {/* Profile Button */}
+          {/* Settings Button */}
+          <Link href="/settings" className="w-full">
+            <div className="group flex items-center gap-2 p-3 rounded-lg border border-border hover:bg-accent/50 transition-colors">
+              <Settings className="h-4 w-4 transition-all duration-200 group-hover:bg-white group-hover:text-black group-hover:rounded-full group-hover:p-1 group-hover:h-6 group-hover:w-6" />
+              <span className="text-sm font-medium">Settings</span>
+            </div>
+          </Link>
         </div>
       </div>
 
@@ -143,7 +149,7 @@ export function ChatSidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton asChild>
-              <Link href="/profile" className="flex items-center gap-2">
+              <Link href="/settings" className="flex items-center gap-2">
                 <div className="flex items-center justify-center w-8 h-8 bg-primary/10 rounded-full">
                   {user?.imageUrl ? (
                     <Image
