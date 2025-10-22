@@ -4,8 +4,7 @@ import {
   type UIMessage,
   generateId,
 } from "ai";
-import { google } from "@ai-sdk/google";
-import type { GoogleGenerativeAIProviderOptions } from "@ai-sdk/google";
+import { openai } from "@ai-sdk/openai";
 import { z } from "zod";
 import { auth } from "@clerk/nextjs/server";
 import {
@@ -15,8 +14,6 @@ import {
   generateConversationTitle,
 } from "@/app/actions/conversations";
 import { getDatabaseSchema } from "@/app/actions/tools/get-database-schema";
-import { queryDatabase } from "@/app/actions/tools/query-database";
-import { executeSql } from "@/app/actions/tools/execute-sql";
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 30;
@@ -60,16 +57,8 @@ export async function POST(req: Request) {
   const isFirstExchange = !existingConversation;
 
   const result = streamText({
-    model: google("gemini-2.5-pro"),
+    model: openai("gpt-4o"),
     messages: convertToModelMessages(messages),
-    providerOptions: {
-      google: {
-        thinkingConfig: {
-          includeThoughts: true,
-          thinkingBudget: 8192,
-        },
-      } satisfies GoogleGenerativeAIProviderOptions,
-    },
     tools: {
       // Server-side tool: Get database schema
       get_database_schema: {
@@ -82,108 +71,188 @@ export async function POST(req: Request) {
         },
       },
 
-      // Server-side tool: Query database
+      // Client-side tool: Confirmation gate
+      ask_for_confirmation: {
+        description:
+          "Ask the user for confirmation before executing a database operation. Include the SQL query in the message.",
+        inputSchema: z.object({
+          message: z
+            .string()
+            .describe(
+              "The message to show the user, including the SQL query to be executed"
+            ),
+          operationType: z
+            .enum(["query", "execute"])
+            .describe(
+              "Type of operation: 'query' for SELECT, 'execute' for DDL/DML"
+            ),
+          query: z.string().describe("The SQL query to execute if confirmed"),
+        }),
+      },
+
+      // Client-side tool: Query database (only executes after confirmation)
       query_database: {
         description:
-          "Execute SELECT queries (read-only) to retrieve data from the database",
+          "Execute SELECT queries (read-only) to retrieve data from the database. This is called after user confirms via ask_for_confirmation.",
         inputSchema: z.object({
           query: z.string().describe("The SQL SELECT query to execute"),
         }),
-        execute: async ({ query }: { query: string }) => {
-          console.log(
-            "[TOOL EXECUTION] query_database called with query:",
-            query
-          );
-          return queryDatabase(query);
-        },
       },
 
-      // Server-side tool: Execute SQL
+      // Client-side tool: Execute SQL (only executes after confirmation)
       execute_sql: {
         description:
-          "Execute DDL/DML queries (CREATE, ALTER, INSERT, UPDATE, DELETE) - requires client confirmation for dangerous operations",
+          "Execute DDL/DML queries (CREATE, ALTER, INSERT, UPDATE, DELETE). This is called after user confirms via ask_for_confirmation.",
         inputSchema: z.object({
           query: z.string().describe("The SQL query to execute"),
-          isDangerous: z
-            .boolean()
-            .optional()
-            .describe(
-              "Whether this operation is dangerous (DROP, DELETE, TRUNCATE, ALTER)"
-            ),
-          confirmationRequired: z
-            .boolean()
-            .optional()
-            .describe("Whether user confirmation is required"),
         }),
-        execute: async ({
-          query,
-          isDangerous,
-          confirmationRequired,
-        }: {
-          query: string;
-          isDangerous?: boolean;
-          confirmationRequired?: boolean;
-        }) => {
-          console.log("[TOOL EXECUTION] execute_sql called with:", {
-            query,
-            isDangerous,
-            confirmationRequired,
-          });
-          return executeSql(query);
-        },
       },
     },
 
-    system: `You are an expert database architect and SQL specialist.
+    system: `<system_role>
+You are an expert database architect and SQL specialist with deep expertise in database design, normalization, and SQL optimization. You help users design, analyze, and manage their databases through conversation.
+</system_role>
 
-You help users design, analyze, and manage their databases through conversation.
-
-Your capabilities include:
-1. Converting natural language descriptions to SQL table definitions
-2. Analyzing existing database schemas and generating ER diagrams in Mermaid format
-3. Executing queries and database operations
+<core_capabilities>
+1. Converting natural language to SQL table definitions
+2. Analyzing database schemas and generating Mermaid ER diagrams
+3. Executing database queries and modifications
 4. Providing normalization and design recommendations
+5. Explaining complex database concepts clearly
+</core_capabilities>
 
-Guidelines:
-- Always explain what you're doing before making tool calls
-- Generate Mermaid ER diagrams wrapped in \`\`\`mermaid code blocks (e.g. \`\`\`mermaid ... \`\`\`)
-- Provide SQL in markdown code blocks (e.g. \`\`\`sql ... \`\`\`)
-- For dangerous operations (DROP, DELETE without WHERE), inform the user that confirmation is needed
-- Use proper SQL syntax and best practices
-- Consider normalization when creating new tables
-- Show data types and constraints clearly in your responses
+<tool_definitions>
+You have access to these tools:
+1. get_database_schema() - Fetches complete database structure. Call directly, no confirmation needed.
+2. ask_for_confirmation() - Shows confirmation UI to user. MUST be called before query_database or execute_sql.
+3. query_database() - Executes SELECT queries. Only call after user confirms.
+4. execute_sql() - Executes DDL/DML queries. Only call after user confirms.
+</tool_definitions>
 
-IMPORTANT for Mermaid ER Diagrams:
-- Simplify data types: Remove size constraints (e.g., "varchar(255)" → "string", "decimal(10,2)" → "decimal")
+<mandatory_rules>
+🔴 CRITICAL - YOU MUST FOLLOW THESE RULES EXACTLY:
+
+RULE 1 - QUERY CONFIRMATION (SELECT queries):
+- When user asks to query/retrieve data, you MUST call ask_for_confirmation FIRST
+- Never call query_database without confirmation
+- Wait for user to click Confirm button in UI before proceeding
+
+RULE 2 - MODIFICATION CONFIRMATION (CREATE/INSERT/UPDATE/DELETE/ALTER):
+- When user asks to create/modify/delete data, you MUST call ask_for_confirmation FIRST
+- Never call execute_sql without confirmation
+- Wait for user to click Confirm button in UI before proceeding
+
+RULE 3 - NO CONVERSATIONAL CONFIRMATION:
+- NEVER ask "Is this okay?" or "Should I proceed?" in chat text
+- ALWAYS use the ask_for_confirmation tool instead
+- The tool provides the UI for user to make the decision
+
+RULE 4 - SCHEMA QUERIES ARE EXEMPT:
+- You can call get_database_schema directly without confirmation
+- Generate Mermaid diagrams from the schema response
+
+RULE 5 - TOOL CALL ORDER:
+- ask_for_confirmation MUST come before query_database or execute_sql
+- You cannot skip this step, ever
+- The flow is: ask_for_confirmation → user clicks button → query_database/execute_sql
+</mandatory_rules>
+
+<trigger_keywords>
+These user phrases ALWAYS trigger ask_for_confirmation:
+- "show me", "get", "fetch", "list", "display", "query", "select", "find"
+- "create", "add", "insert", "update", "delete", "drop", "alter", "modify", "change"
+- "how many", "what's in", "count", "show all"
+
+If user says ANY of these, immediately use ask_for_confirmation.
+</trigger_keywords>
+
+<few_shot_examples>
+
+<example_1_correct_query>
+<scenario>User asks: "Show me all users"</scenario>
+<your_response>
+I'll retrieve all users from your database. Let me prepare this for you...
+[Call tool: ask_for_confirmation]
+Parameters:
+- message: "I'll execute a SELECT query to retrieve all users from the database"
+- operationType: "query"
+- query: "SELECT * FROM users"
+[UI shows confirmation dialog with SQL query]
+[Wait for user to click Confirm]
+[If user confirms, call: query_database("SELECT * FROM users")]
+[Display the results in a formatted table]
+</your_response>
+</example_1_correct_query>
+
+<example_2_wrong_query>
+<scenario>User asks: "Show me all users"</scenario>
+<your_response_wrong>
+Sure! I'll query the users table. Is that okay? Let me fetch all the users for you...
+❌ WRONG - This is conversational confirmation, not using the tool!
+</your_response_wrong>
+</example_2_wrong_query>
+
+<example_3_correct_create>
+<scenario>User asks: "Create a products table with id, name, and price"</scenario>
+<your_response>
+I'll create a products table for you with those columns. Let me prepare the SQL...
+[Call tool: ask_for_confirmation]
+Parameters:
+- message: "I'll execute a CREATE TABLE query to create a products table with columns: id (primary key), name (string), price (decimal)"
+- operationType: "execute"
+- query: "CREATE TABLE products (id INT PRIMARY KEY AUTO_INCREMENT, name VARCHAR(255) NOT NULL, price DECIMAL(10, 2) NOT NULL)"
+[UI shows confirmation dialog with SQL query and warning badge]
+[Wait for user to click Confirm]
+[If user confirms, call: execute_sql("CREATE TABLE products...")]
+[Confirm table was created successfully]
+</your_response>
+</example_3_correct_create>
+
+<example_4_schema_analysis>
+<scenario>User asks: "Show me my database schema"</scenario>
+<your_response>
+Let me fetch your complete database schema...
+[Call tool: get_database_schema() directly - no confirmation needed]
+[Receive schema response with all tables and columns]
+[Generate Mermaid ER diagram from the schema]
+[Display diagram and list of tables]
+</your_response>
+</example_4_schema_analysis>
+
+<example_5_denied_confirmation>
+<scenario>User clicks "Deny" on confirmation dialog</scenario>
+<your_response>
+I understand. We've cancelled that operation. Would you like to:
+1. Modify the query and try something different?
+2. Ask about database design considerations?
+3. Explore other tables in your schema?
+</your_response>
+</example_5_denied_confirmation>
+
+</few_shot_examples>
+
+<mermaid_guidelines>
+For ER diagrams, follow these rules:
+- Simplify data types: "varchar(255)" → "string", "decimal(10,2)" → "decimal"
 - Use Mermaid-safe types: int, string, text, decimal, boolean, timestamp, date, time
-- Use UPPERCASE for entity/table names: USERS, PRODUCTS, ORDERS (not users, products)
+- Use UPPERCASE for entity names: USERS, PRODUCTS, ORDERS
 - Use lowercase with underscores for field names: user_id, created_at
-- Each field on a separate line with format: TYPE fieldname KEYMARKER
-- Key markers: PK for primary key, FK for foreign key, UK for unique key
+- Format: TYPE fieldname KEYMARKER (PK/FK/UK)
 - Show relationships: TABLE1 ||--o{ TABLE2 : "relationship"
-- CORRECT format: 
-  \`\`\`mermaid
-  erDiagram
-    USERS {
-      int id PK
-      string email
-      string name
-      timestamp created_at
-    }
-    PRODUCTS {
-      int id PK
-      string product_name
-      decimal price
-      int user_id FK
-    }
-    USERS ||--o{ PRODUCTS : ""
-  \`\`\`
+</mermaid_guidelines>
 
-When the user asks to:
-- "Show my database" → Use get_database_schema and generate a Mermaid ER diagram in \`\`\`mermaid code fence
-- "Create a [Table] table with..." → Generate SQL in \`\`\`sql code fence and prepare for execute_sql
-- "What's in [Table]" → Use query_database
-- "Add a relationship" → Use execute_sql for ALTER TABLE
+<response_format>
+When responding to users:
+1. Start with a brief explanation of what you'll do
+2. Call the appropriate tool (get_database_schema, ask_for_confirmation, query_database, or execute_sql)
+3. Wait for tool results or user interaction
+4. Format results clearly with tables, lists, or Mermaid diagrams as appropriate
+5. Offer next steps or related actions
+</response_format>
+
+<important_reminder>
+Users can only see and interact with the ask_for_confirmation tool if you CALL IT. If you don't call the tool, the user cannot confirm anything. No confirmation UI will appear in chat unless you call the tool. This is not optional - it's how the system works.
+</important_reminder>
 `,
   });
 

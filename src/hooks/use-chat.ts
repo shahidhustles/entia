@@ -1,6 +1,8 @@
 import { useChat as useBaseChat } from "@ai-sdk/react";
 import { lastAssistantMessageIsCompleteWithToolCalls, UIMessage } from "ai";
 import { useCallback } from "react";
+import { queryDatabase } from "@/app/actions/tools/query-database";
+import { executeSql } from "@/app/actions/tools/execute-sql";
 
 /**
  * Custom useChat hook with Vercel AI SDK integration
@@ -38,32 +40,74 @@ export function useChat(
         return;
       }
 
-      // For now, all tools are server-side and will be executed by the API
-      // This handler will be extended when we add client-side tools
+      // Handle client-side tools that auto-execute
       switch (toolCall.toolName) {
+        case "ask_for_confirmation":
+          console.log(
+            "[TOOL CALL] ask_for_confirmation - rendered as UI, waiting for user input"
+          );
+          break;
+
+        case "query_database":
+          console.log(
+            "[TOOL CALL] query_database - executing SELECT query",
+            toolCall.input
+          );
+          try {
+            const result = await queryDatabase(
+              (toolCall.input as { query: string }).query
+            );
+            // No await here to avoid deadlocks per Vercel AI SDK docs
+            addToolResult({
+              tool: "query_database",
+              toolCallId: toolCall.toolCallId,
+              output: result,
+            });
+          } catch (err) {
+            addToolResult({
+              tool: "query_database",
+              toolCallId: toolCall.toolCallId,
+              state: "output-error",
+              errorText: `Failed to execute query: ${
+                err instanceof Error ? err.message : "Unknown error"
+              }`,
+            });
+          }
+          break;
+
+        case "execute_sql":
+          console.log(
+            "[TOOL CALL] execute_sql - executing DDL/DML query",
+            toolCall.input
+          );
+          try {
+            const result = await executeSql(
+              (toolCall.input as { query: string }).query
+            );
+            // No await here to avoid deadlocks per Vercel AI SDK docs
+            addToolResult({
+              tool: "execute_sql",
+              toolCallId: toolCall.toolCallId,
+              output: result,
+            });
+          } catch (err) {
+            addToolResult({
+              tool: "execute_sql",
+              toolCallId: toolCall.toolCallId,
+              state: "output-error",
+              errorText: `Failed to execute query: ${
+                err instanceof Error ? err.message : "Unknown error"
+              }`,
+            });
+          }
+          break;
+
         case "get_database_schema":
           console.log(
             "[TOOL CALL] get_database_schema - server-side execution"
           );
           break;
-        case "query_database":
-          console.log(
-            "[TOOL CALL] query_database - server-side execution",
-            toolCall.input
-          );
-          break;
-        case "execute_sql":
-          console.log(
-            "[TOOL CALL] execute_sql - server-side execution",
-            toolCall.input
-          );
-          break;
-        case "save_diagram":
-          console.log(
-            "[TOOL CALL] save_diagram - server-side execution",
-            toolCall.input
-          );
-          break;
+
         default:
           console.log("[TOOL CALL] Unknown tool:", toolCall.toolName);
       }

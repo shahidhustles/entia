@@ -23,6 +23,7 @@ import { Response } from "@/components/ui/ai/response";
 import { useChat } from "@/hooks/use-chat";
 import { ChatInput } from "@/components/chat-input";
 import type { UIMessage } from "ai";
+import { ConfirmationUI } from "./ui/confirmation-ui";
 
 interface ClientChatComponentProps {
   chatId: string;
@@ -42,7 +43,10 @@ export function ClientChatComponent({
   const hasInitialized = useRef(false);
   const hasSentInitialMessage = useRef(false);
 
-  const { messages, sendMessage, status } = useChat(chatId, initialMessages);
+  const { messages, sendMessage, status, addToolResult } = useChat(
+    chatId,
+    initialMessages
+  );
 
   // Send initial query ONLY if:
   // 1. We have a query param
@@ -77,6 +81,38 @@ export function ClientChatComponent({
               <ReasoningContent>{part.text}</ReasoningContent>
             </Reasoning>
           );
+
+        case "tool-ask_for_confirmation":
+        case "tool-askForConfirmation": {
+          const input =
+            part.state === "input-available" ||
+            part.state === "output-available"
+              ? (part.input as {
+                  message?: string;
+                  operationType?: "query" | "execute";
+                  query?: string;
+                })
+              : { message: "", operationType: "execute" as const, query: "" };
+
+          return (
+            <div key={index} className="my-4">
+              <ConfirmationUI
+                message={input.message || ""}
+                operationType={input.operationType || "execute"}
+                query={input.query || ""}
+                toolCallId={part.toolCallId}
+                state={
+                  part.state as
+                    | "input-streaming"
+                    | "input-available"
+                    | "output-available"
+                    | "output-error"
+                }
+                addToolResult={addToolResult}
+              />
+            </div>
+          );
+        }
 
         case "tool-get_database_schema":
         case "tool-query_database":
