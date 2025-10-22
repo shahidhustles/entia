@@ -110,7 +110,9 @@ export async function executeSql(query: string): Promise<{
         totalAffectedRows += affectedRows;
       }
 
-      console.log(`[EXECUTE] Success - ${totalAffectedRows} total rows affected`);
+      console.log(
+        `[EXECUTE] Success - ${totalAffectedRows} total rows affected`
+      );
 
       return {
         success: true,

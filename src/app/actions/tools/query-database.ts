@@ -113,7 +113,10 @@ export async function queryDatabase(query: string): Promise<{
         if (!q.toUpperCase().startsWith("SELECT")) {
           return {
             success: false,
-            error: `Only SELECT queries are allowed. Found: ${q.substring(0, 30)}...`,
+            error: `Only SELECT queries are allowed. Found: ${q.substring(
+              0,
+              30
+            )}...`,
           };
         }
       }
@@ -127,9 +130,7 @@ export async function queryDatabase(query: string): Promise<{
         console.log(`[QUERY] Executing: ${q}`);
         const [rows] = await connection.query(q);
         const resultArray = Array.isArray(rows) ? rows : [];
-        allResults.push(
-          ...(resultArray as Array<Record<string, unknown>>)
-        );
+        allResults.push(...(resultArray as Array<Record<string, unknown>>));
       }
 
       console.log(`[QUERY] Success - ${allResults.length} total rows returned`);
