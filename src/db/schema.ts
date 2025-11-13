@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, bigserial } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
 // Users table - stores user info and Clerk integration
@@ -34,6 +34,18 @@ export const messages = pgTable("messages", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Email change audit table - tracks user email modifications
+export const emailChangeAudit = pgTable("email_change_audit", {
+  id: bigserial("id", { mode: "bigint" }).primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  fieldChanged: text("field_changed").notNull(), // Always 'email' for this implementation
+  oldValue: text("old_value"), // Previous email value
+  newValue: text("new_value").notNull(), // New email value
+  changedAt: timestamp("changed_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   conversations: many(conversations),
@@ -66,3 +78,6 @@ export type SelectConversation = typeof conversations.$inferSelect;
 
 export type InsertMessage = typeof messages.$inferInsert;
 export type SelectMessage = typeof messages.$inferSelect;
+
+export type InsertEmailChangeAudit = typeof emailChangeAudit.$inferInsert;
+export type SelectEmailChangeAudit = typeof emailChangeAudit.$inferSelect;
