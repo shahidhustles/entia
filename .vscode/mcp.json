@@ -6,6 +6,10 @@
         "shadcn@latest",
         "mcp"
       ]
+    },
+    "md-ieee-latex-template Docs": {
+      "type": "sse",
+      "url": "https://gitmcp.io/yannbolliger/md-ieee-latex-template"
     }
   }
 }
