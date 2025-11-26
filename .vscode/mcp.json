@@ -1,15 +1,21 @@
 {
-  "servers": {
-    "shadcn": {
-      "command": "npx",
-      "args": [
-        "shadcn@latest",
-        "mcp"
-      ]
-    },
-    "md-ieee-latex-template Docs": {
-      "type": "sse",
-      "url": "https://gitmcp.io/yannbolliger/md-ieee-latex-template"
-    }
-  }
+	"servers": {
+		"shadcn": {
+			"command": "npx",
+			"args": [
+				"shadcn@latest",
+				"mcp"
+			],
+			"type": "stdio"
+		},
+		"md-ieee-latex-template Docs": {
+			"type": "http",
+			"url": "https://gitmcp.io/yannbolliger/md-ieee-latex-template"
+		},
+		"supabase": {
+			"type": "http",
+			"url": "https://mcp.supabase.com/mcp?project_ref=edrrtjpijgkarztsnbfz"
+		}
+	},
+	"inputs": []
 }
