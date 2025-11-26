@@ -30,14 +30,12 @@
     "@radix-ui/react-tooltip": "^1.2.8",
     "@radix-ui/react-use-controllable-state": "^1.2.2",
     "@shikijs/transformers": "^3.13.0",
-    "@supabase/supabase-js": "^2.75.1",
     "ai": "^5.0.76",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
     "drizzle-orm": "^0.44.6",
     "embla-carousel-react": "^8.6.0",
-    "framer-motion": "^12.23.24",
     "harden-react-markdown": "^1.1.5",
     "katex": "^0.16.25",
     "lucide-react": "^0.546.0",
@@ -58,8 +56,7 @@
     "remark-math": "^6.0.0",
     "shiki": "^3.13.0",
     "tailwind-merge": "^3.3.1",
-    "use-stick-to-bottom": "^1.1.1",
-    "uuid": "^13.0.0"
+    "use-stick-to-bottom": "^1.1.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
@@ -68,7 +65,6 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/react-syntax-highlighter": "^15.5.13",
-    "@types/uuid": "^10.0.0",
     "dotenv": "^17.2.3",
     "drizzle-kit": "^0.31.6",
     "eslint": "^9",
